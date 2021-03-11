@@ -1,0 +1,33 @@
+{
+    "deploy": {
+        "packages": [
+            {
+                "name": "hpc",
+                "files": [
+                    "**/*.h",
+                    "**/*.cpp"
+                ],
+                "deployOnSave": true,
+            }
+        ],
+        "targets": [
+            {
+                "type": "sftp",
+                "name": "gpu06",
+                "dir": "/home/chenzhen/Workspace/hpc",
+                "host": "hpcgpu6.ai.zzzc.qihoo.net",
+                "user": "chenzhen",
+                "privateKey": "/Users/chenzhen/.ssh/id_rsa"
+            }
+        ],
+        "alwaysShowPackageList": false,
+        "alwaysShowTargetList": false,
+        "showPopupOnSuccess": false,
+        "showDeployResultInStatusBar": false,
+        "displayLoadedPlugins": false,
+        "displayNetworkInfo": false
+    },
+    "files.associations": {
+        "vector": "cpp"
+    }
+}
