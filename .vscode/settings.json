@@ -1,13 +1,25 @@
 {
-    "deploy": {
+    "deploy.reloaded": {
+        "deployOnSaveButton": {
+            "text": "deploy",
+        },
+        "showStatusWhenFinished": false,
+        "showPopupOnSuccess": false,
+        "showDeployResultInStatusBar": true,
+        "displayNetworkInfo": false,
+        "deployOnSave": true,
         "packages": [
             {
                 "name": "hpc",
                 "files": [
                     "**/*.h",
-                    "**/*.cpp"
+                    "**/*.cpp",
+                    "**/*.cu"
                 ],
-                "deployOnSave": true,
+                "targets": [
+                    "gpu06"
+                ],
+                "deployOnSave": true
             }
         ],
         "targets": [
@@ -20,14 +32,25 @@
                 "privateKey": "/Users/chenzhen/.ssh/id_rsa"
             }
         ],
-        "alwaysShowPackageList": false,
-        "alwaysShowTargetList": false,
-        "showPopupOnSuccess": false,
-        "showDeployResultInStatusBar": false,
-        "displayLoadedPlugins": false,
-        "displayNetworkInfo": false
     },
     "files.associations": {
-        "vector": "cpp"
+        "vector": "cpp",
+        "__config": "cpp",
+        "__hash_table": "cpp",
+        "__locale": "cpp",
+        "algorithm": "cpp",
+        "atomic": "cpp",
+        "functional": "cpp",
+        "iterator": "cpp",
+        "locale": "cpp",
+        "memory": "cpp",
+        "optional": "cpp",
+        "string": "cpp",
+        "string_view": "cpp",
+        "type_traits": "cpp",
+        "unordered_map": "cpp",
+        "utility": "cpp",
+        "*.cu": "cpp",
+        "ios": "cpp"
     }
 }
