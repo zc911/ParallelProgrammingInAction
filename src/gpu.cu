@@ -3,14 +3,21 @@
 
 #include <iostream>
 
+#include "timer.h"
+
 using namespace std;
 
-__global__ void blur_mat(float **input, float **output) {
-  // cout << "hello CUDA" << endl;
+__global__ void blur_mat(float **input, float **output, int width, int height) {
   int y = blockIdx.y * blockDim.y + threadIdx.y;
   int x = blockIdx.x * blockDim.x + threadIdx.x;
-  output[y][x] = input[y][x] + 1;
-  //   printf("%f", input[y][x]);
+  int left = x - 1 < 0 ? 0 : x - 1;
+  int right = x + 1 >= width ? width - 1 : x + 1;
+  int above = y - 1 < 0 ? 0 : y - 1;
+  int below = y + 1 >= height ? height - 1 : y + 1;
+  output[y][x] = (input[y][x] + input[y][left] + input[y][right] +
+                  input[above][left] + input[above][x] + input[above][right] +
+                  input[below][left] + input[below][x] + input[below][right]) /
+                 9;
 }
 
 void print_mat(float *data, int width, int height) {
@@ -23,21 +30,18 @@ void print_mat(float *data, int width, int height) {
 }
 
 int main() {
-  const int width = 8;
-  const int height = 4;
-
-  printf("1\n");
+  const int width = 8192;
+  const int height = 4096;
 
   float **input = (float **)malloc(sizeof(float *) * height);
   float **output = (float **)malloc(sizeof(float *) * height);
   float *input_data = (float *)malloc(sizeof(float) * width * height);
   float *output_data = (float *)malloc(sizeof(float) * width * height);
-  printf("2\n");
   for (int i = 0; i < width * height; ++i) {
     input_data[i] = 1.0f;
     output_data[i] = 0.0f;
   }
-  printf("3\n");
+
   float **d_input;
   float **d_output;
   float *d_input_data;
@@ -50,25 +54,37 @@ int main() {
 
   for (int i = 0; i < height; ++i) {
     input[i] = d_input_data + width * i;
-    output[i] = d_output_data + height * i;
+    output[i] = d_output_data + width * i;
   }
-  printf("4\n");
+
+  Timer t_copy("Host to device");
   cudaMemcpy(d_input, input, sizeof(float *) * height, cudaMemcpyHostToDevice);
   cudaMemcpy(d_output, output, sizeof(float *) * height,
              cudaMemcpyHostToDevice);
   cudaMemcpy(d_input_data, input_data, sizeof(float) * width * height,
              cudaMemcpyHostToDevice);
+  t_copy.stop();
 
-  dim3 dim_block(4, 4);
+  dim3 dim_block(16, 16);
   dim3 dim_grid(width / dim_block.x, height / dim_block.y);
-  printf("5\n");
-  blur_mat<<<dim_grid, dim_block>>>(d_input, d_output);
-  printf("6\n");
+
+  Timer t1("original");
+  blur_mat<<<dim_grid, dim_block>>>(d_input, d_output, width, height);
+  cudaDeviceSynchronize();
+  t1.stop();
+
   cudaMemcpy(output_data, d_output_data, sizeof(float) * width * height,
              cudaMemcpyDeviceToHost);
 
-  print_mat(output_data, width, height);
+  cudaFree(d_input);
+  cudaFree(d_output);
+  cudaFree(d_input_data);
+  cudaFree(d_output_data);
 
-  cudaDeviceReset();
+  free(input);
+  free(output);
+  free(input_data);
+  free(output_data);
+
   return 0;
 }

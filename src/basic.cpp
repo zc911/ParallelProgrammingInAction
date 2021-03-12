@@ -181,30 +181,30 @@ int main() {
 
   vector<vector<float>> in_data(height, vector<float>(width, 1));
 
-  vector<vector<float>> out_data_1(height, vector<float>(width, 0));
-  Timer t1("1 original");
-  blur_mat_original(in_data, out_data_1);
-  t1.stop();
+  // vector<vector<float>> out_data_1(height, vector<float>(width, 0));
+  // Timer t1("1 original");
+  // blur_mat_original(in_data, out_data_1);
+  // t1.stop();
 
-  vector<vector<float>> out_data_2(height, vector<float>(width, 0));
-  Timer t2("2 redup");
-  blur_mat_redup(in_data, out_data_2);
-  t2.stop();
+  // vector<vector<float>> out_data_2(height, vector<float>(width, 0));
+  // Timer t2("2 redup");
+  // blur_mat_redup(in_data, out_data_2);
+  // t2.stop();
 
-  vector<vector<float>> out_data_3(height, vector<float>(width, 0));
-  Timer t3("3 locality");
-  blur_mat_locality(in_data, out_data_3);
-  t3.stop();
+  // vector<vector<float>> out_data_3(height, vector<float>(width, 0));
+  // Timer t3("3 locality");
+  // blur_mat_locality(in_data, out_data_3);
+  // t3.stop();
 
-  vector<vector<float>> out_data_5(height, vector<float>(width, 0));
-  Timer t5("5 parallel");
-  blur_mat_parallel(in_data, out_data_5);
-  t5.stop();
+  // vector<vector<float>> out_data_5(height, vector<float>(width, 0));
+  // Timer t5("5 parallel");
+  // blur_mat_parallel(in_data, out_data_5);
+  // t5.stop();
 
-  vector<vector<float>> out_data_4_6(height, vector<float>(width, 0));
-  Timer t4_6("6 1024*512 titing");
-  blur_mat_tiling(in_data, out_data_4_6, 1024, 512);
-  t4_6.stop();
+  // vector<vector<float>> out_data_4_6(height, vector<float>(width, 0));
+  // Timer t4_6("6 1024*512 titing");
+  // blur_mat_tiling(in_data, out_data_4_6, 1024, 512);
+  // t4_6.stop();
 
   vector<vector<float>> out_data_7(height, vector<float>(width, 0));
   Timer t7("7 tiling + parallel");
