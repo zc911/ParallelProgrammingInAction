@@ -38,7 +38,7 @@ int main() {
   float *input_data = (float *)malloc(sizeof(float) * width * height);
   float *output_data = (float *)malloc(sizeof(float) * width * height);
   for (int i = 0; i < width * height; ++i) {
-    input_data[i] = 1.0f;
+    input_data[i] = i;
     output_data[i] = 0.0f;
   }
 
@@ -65,7 +65,7 @@ int main() {
              cudaMemcpyHostToDevice);
   t_copy.stop();
 
-  dim3 dim_block(16, 16);
+  dim3 dim_block(32, 32);
   dim3 dim_grid(width / dim_block.x, height / dim_block.y);
 
   Timer t1("original");
@@ -80,6 +80,8 @@ int main() {
   cudaFree(d_output);
   cudaFree(d_input_data);
   cudaFree(d_output_data);
+
+  printf("%f,%f\n", output_data[0], output_data[1200]);
 
   free(input);
   free(output);
