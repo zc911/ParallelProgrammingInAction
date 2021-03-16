@@ -16,8 +16,9 @@ struct Mat {
     for (int i = 0; i < _width * _height; i++) _data[i] = init_value;
   }
   ~Mat() {
-    if (_data != nullptr) free(_data);
+    if (_data) free(_data);
   }
+
   __host__ __device__ T get(int x, int y) { return _data[y * _width + x]; }
   __device__ void set(int x, int y, T value) { _data[y * _width + x] = value; }
 
@@ -122,6 +123,18 @@ int main() {
 
   printf("%f %f %f\n", output->get(0, 0), output->get(1, 0),
          output->get(100, 100));
+
+  cudaFree(d_input);
+  cudaFree(d_output);
+  cudaFree(d_input_data->_data);
+  d_input_data->_data = nullptr;
+  cudaFree(d_output_data->_data);
+  d_output_data->_data = nullptr;
+
+  delete input;
+  delete output;
+  delete d_input_data;
+  delete d_output_data;
 
   return 0;
 }
