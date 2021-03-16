@@ -1,0 +1,1 @@
+nvcc -Wno-deprecated-gpu-targets -I/usr/local/cuda/include gpu.cu -std=c++11 -o gpu && ./gpu

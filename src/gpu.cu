@@ -7,86 +7,121 @@
 
 using namespace std;
 
-__global__ void blur_mat(float **input, float **output, int width, int height) {
+template <typename T>
+struct Mat {
+  Mat(int width, int height) : _width(width), _height(height), _data(nullptr) {}
+  Mat(int width, int height, T init_value)
+      : _width(width), _height(height), _data(nullptr) {
+    _data = (T *)malloc(sizeof(T) * _width * _height);
+    for (int i = 0; i < _width * _height; i++) _data[i] = init_value;
+  }
+  ~Mat() {
+    if (_data != nullptr) free(_data);
+  }
+  __host__ __device__ T get(int x, int y) { return _data[y * _width + x]; }
+  __device__ void set(int x, int y, T value) { _data[y * _width + x] = value; }
+
+  int _height;
+  int _width;
+  T *_data;
+};
+
+__global__ void blur_mat(Mat<float> *input, Mat<float> *output) {
+  int width = input->_width;
+  int height = input->_height;
+
   int y = blockIdx.y * blockDim.y + threadIdx.y;
   int x = blockIdx.x * blockDim.x + threadIdx.x;
   int left = x - 1 < 0 ? 0 : x - 1;
   int right = x + 1 >= width ? width - 1 : x + 1;
   int above = y - 1 < 0 ? 0 : y - 1;
   int below = y + 1 >= height ? height - 1 : y + 1;
-  output[y][x] = (input[y][x] + input[y][left] + input[y][right] +
-                  input[above][left] + input[above][x] + input[above][right] +
-                  input[below][left] + input[below][x] + input[below][right]) /
-                 9;
+
+  float res = (input->get(x, y) + input->get(left, y) + input->get(right, y) +
+               input->get(x, above) + input->get(left, above) +
+               input->get(right, above) + input->get(x, below) +
+               input->get(left, below) + input->get(right, below)) /
+              9;
+  output->set(x, y, res);
 }
 
-void print_mat(float *data, int width, int height) {
-  for (int y = 0; y < height; y++) {
-    for (int x = 0; x < width; x++) {
-      cout << data[height * y + x] << ", ";
+__global__ void blur_mat_redup(Mat<float> *input, Mat<float> *output) {
+  int width = input->_width;
+  int height = input->_height;
+
+  int y = blockIdx.y * blockDim.y + threadIdx.y;
+  int x = blockIdx.x * blockDim.x + threadIdx.x;
+  int left = x - 1 < 0 ? 0 : x - 1;
+  int right = x + 1 >= width ? width - 1 : x + 1;
+  int above = y - 1 < 0 ? 0 : y - 1;
+  int below = y + 1 >= height ? height - 1 : y + 1;
+
+  output->set(
+      x, y,
+      (input->get(x, y) + input->get(left, y) + input->get(right, y)) / 3);
+  __syncthreads();
+  output->set(
+      x, y,
+      (output->get(x, y) + output->get(x, above) + output->get(x, below)) / 3);
+}
+
+void print_mat(Mat<float> &mat) {
+  for (int y = 0; y < mat._height; y++) {
+    for (int x = 0; x < mat._width; x++) {
+      cout << mat.get(x, y) << ", ";
     }
     cout << endl;
   }
 }
 
 int main() {
+  cudaSetDevice(3);
+
   const int width = 8192;
   const int height = 4096;
 
-  float **input = (float **)malloc(sizeof(float *) * height);
-  float **output = (float **)malloc(sizeof(float *) * height);
-  float *input_data = (float *)malloc(sizeof(float) * width * height);
-  float *output_data = (float *)malloc(sizeof(float) * width * height);
-  for (int i = 0; i < width * height; ++i) {
-    input_data[i] = i;
-    output_data[i] = 0.0f;
-  }
+  Mat<float> *input = new Mat<float>(width, height, 0.0f);
+  Mat<float> *output = new Mat<float>(width, height, 0.0f);
 
-  float **d_input;
-  float **d_output;
-  float *d_input_data;
-  float *d_output_data;
+  Mat<float> *d_input;
+  Mat<float> *d_output;
+  Mat<float> *d_input_data = new Mat<float>(width, height);
+  Mat<float> *d_output_data = new Mat<float>(width, height);
 
-  cudaMalloc((void **)&d_input, sizeof(float **) * height);
-  cudaMalloc((void **)&d_output, sizeof(float **) * height);
-  cudaMalloc((void **)&d_input_data, sizeof(float) * width * height);
-  cudaMalloc((void **)&d_output_data, sizeof(float) * width * height);
-
-  for (int i = 0; i < height; ++i) {
-    input[i] = d_input_data + width * i;
-    output[i] = d_output_data + width * i;
-  }
+  cudaMalloc((void **)&d_input, sizeof(Mat<float>));
+  cudaMalloc((void **)&d_output, sizeof(Mat<float>));
+  cudaMalloc((void **)&(d_input_data->_data), sizeof(float) * width * height);
+  cudaMalloc((void **)&(d_output_data->_data), sizeof(float) * width * height);
+  cudaMemcpy(d_input, d_input_data, sizeof(Mat<float>), cudaMemcpyHostToDevice);
+  cudaMemcpy(d_output, d_output_data, sizeof(Mat<float>),
+             cudaMemcpyHostToDevice);
 
   Timer t_copy("Host to device");
-  cudaMemcpy(d_input, input, sizeof(float *) * height, cudaMemcpyHostToDevice);
-  cudaMemcpy(d_output, output, sizeof(float *) * height,
-             cudaMemcpyHostToDevice);
-  cudaMemcpy(d_input_data, input_data, sizeof(float) * width * height,
+  cudaMemcpy(d_input_data->_data, input->_data, sizeof(float) * width * height,
              cudaMemcpyHostToDevice);
   t_copy.stop();
 
-  dim3 dim_block(32, 32);
+  dim3 dim_block(16, 8);
   dim3 dim_grid(width / dim_block.x, height / dim_block.y);
 
   Timer t1("original");
-  blur_mat<<<dim_grid, dim_block>>>(d_input, d_output, width, height);
+  blur_mat<<<dim_grid, dim_block>>>(d_input, d_output);
   cudaDeviceSynchronize();
   t1.stop();
 
-  cudaMemcpy(output_data, d_output_data, sizeof(float) * width * height,
-             cudaMemcpyDeviceToHost);
+  cudaMemcpy(output->_data, d_output_data->_data,
+             sizeof(float) * width * height, cudaMemcpyDeviceToHost);
 
-  cudaFree(d_input);
-  cudaFree(d_output);
-  cudaFree(d_input_data);
-  cudaFree(d_output_data);
+  Timer t2("redup");
+  blur_mat_redup<<<dim_grid, dim_block>>>(d_input, d_output);
+  cudaDeviceSynchronize();
+  t2.stop();
 
-  printf("%f,%f\n", output_data[0], output_data[1200]);
+  cudaMemcpy(output->_data, d_output_data->_data,
+             sizeof(float) * width * height, cudaMemcpyDeviceToHost);
 
-  free(input);
-  free(output);
-  free(input_data);
-  free(output_data);
+  printf("%f %f %f\n", output->get(0, 0), output->get(1, 0),
+         output->get(100, 100));
 
   return 0;
 }

@@ -51,6 +51,7 @@
         "unordered_map": "cpp",
         "utility": "cpp",
         "*.cu": "cpp",
-        "ios": "cpp"
+        "ios": "cpp",
+        "bitset": "cpp"
     }
 }
