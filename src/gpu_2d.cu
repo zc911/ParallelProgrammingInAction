@@ -20,6 +20,18 @@ __global__ void blur_mat(float **input, float **output, int width, int height) {
                  9;
 }
 
+__global__ void blur_mat_redup(float **input, float **output, int width,
+                               int height) {
+  int y = blockIdx.y * blockDim.y + threadIdx.y;
+  int x = blockIdx.x * blockDim.x + threadIdx.x;
+  int left = x - 1 < 0 ? 0 : x - 1;
+  int right = x + 1 >= width ? width - 1 : x + 1;
+  int above = y - 1 < 0 ? 0 : y - 1;
+  int below = y + 1 >= height ? height - 1 : y + 1;
+  output[y][x] = (input[y][x] + input[y][left] + input[y][right]) / 3;
+  output[y][x] = (output[y][x] + output[above][x] + output[below][x]) / 3;
+}
+
 void print_mat(float *data, int width, int height) {
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
@@ -76,6 +88,11 @@ int main() {
 
   cudaMemcpy(output_data, d_output_data, sizeof(float) * width * height,
              cudaMemcpyDeviceToHost);
+
+  Timer t2("redup");
+  blur_mat_redup<<<dim_grid, dim_block>>>(d_input, d_output, width, height);
+  cudaDeviceSynchronize();
+  t2.stop();
 
   cudaFree(d_input);
   cudaFree(d_output);
