@@ -63,7 +63,7 @@ __global__ void blur_mat_redup(Mat<float> *input, Mat<float> *output) {
   output->set(
       x, y,
       (input->get(x, y) + input->get(left, y) + input->get(right, y)) / 3);
-  // __syncthreads();
+  __syncthreads();
   output->set(
       x, y,
       (output->get(x, y) + output->get(x, above) + output->get(x, below)) / 3);
