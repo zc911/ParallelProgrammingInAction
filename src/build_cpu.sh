@@ -1,0 +1,1 @@
+g++ cpu.cpp -o cpu -std=c++11 -fopenmp -msse3 && ./cpu

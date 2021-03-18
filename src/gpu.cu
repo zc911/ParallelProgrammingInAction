@@ -36,16 +36,17 @@ __global__ void blur_mat(Mat<float> *input, Mat<float> *output) {
 
   int y = blockIdx.y * blockDim.y + threadIdx.y;
   int x = blockIdx.x * blockDim.x + threadIdx.x;
-  int left = x - 1 < 0 ? 0 : x - 1;
   int right = x + 1 >= width ? width - 1 : x + 1;
-  int above = y - 1 < 0 ? 0 : y - 1;
+  int right_right = x + 2 >= width ? width - 1 : x + 2;
   int below = y + 1 >= height ? height - 1 : y + 1;
+  int below_below = y + 2 >= height ? height - 1 : y + 2;
 
-  float res = (input->get(x, y) + input->get(left, y) + input->get(right, y) +
-               input->get(x, above) + input->get(left, above) +
-               input->get(right, above) + input->get(x, below) +
-               input->get(left, below) + input->get(right, below)) /
-              9;
+  float res =
+      (input->get(x, y) + input->get(right, y) + input->get(right_right, y) +
+       input->get(x, below) + input->get(right, below) +
+       input->get(right_right, below) + input->get(x, below_below) +
+       input->get(right, below_below) + input->get(right_right, below_below)) /
+      9;
   output->set(x, y, res);
 }
 
@@ -55,18 +56,20 @@ __global__ void blur_mat_redup(Mat<float> *input, Mat<float> *output) {
 
   int y = blockIdx.y * blockDim.y + threadIdx.y;
   int x = blockIdx.x * blockDim.x + threadIdx.x;
-  int left = x - 1 < 0 ? 0 : x - 1;
   int right = x + 1 >= width ? width - 1 : x + 1;
-  int above = y - 1 < 0 ? 0 : y - 1;
+  int right_right = x + 2 >= width ? width - 1 : x + 2;
   int below = y + 1 >= height ? height - 1 : y + 1;
+  int below_below = y + 2 >= height ? height - 1 : y + 2;
 
   output->set(
       x, y,
-      (input->get(x, y) + input->get(left, y) + input->get(right, y)) / 3);
+      (input->get(x, y) + input->get(right, y) + input->get(right_right, y)) /
+          3);
   __syncthreads();
-  output->set(
-      x, y,
-      (output->get(x, y) + output->get(x, above) + output->get(x, below)) / 3);
+  output->set(x, y,
+              (output->get(x, y) + output->get(x, below) +
+               output->get(x, below_below)) /
+                  3);
 }
 
 __global__ void blur_mat_tiling(Mat<float> *input, Mat<float> *output) {
