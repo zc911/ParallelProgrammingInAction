@@ -1,4 +1,5 @@
-#include <xmmintrin.h>
+#include <pmmintrin.h>
+// #include <xmmintrin.h>
 
 #include <iostream>
 #include <vector>
@@ -11,16 +12,18 @@ void blur_mat_original(const vector<vector<float>> &input,
                        vector<vector<float>> &output) {
   int height = input.size();
   int width = input[0].size();
+  int right, right_right, below, below_below;
   for (int x = 0; x < width; ++x) {
-    int left = x - 1 < 0 ? 0 : x - 1;
-    int right = x + 1 >= width ? width - 1 : x + 1;
+    right = x + 1 >= width ? width - 1 : x + 1;
+    right_right = x + 2 >= width ? width - 1 : x + 2;
     for (int y = 0; y < height; ++y) {
-      int above = y - 1 < 0 ? 0 : y - 1;
-      int below = y + 1 >= height ? height - 1 : y + 1;
+      below = y + 1 >= height ? height - 1 : y + 1;
+      below_below = y + 2 >= height ? height - 1 : y + 2;
       output[y][x] =
-          ((input[y][x] + input[y][left] + input[y][right]) +
-           (input[above][x] + input[above][left] + input[above][right]) +
-           (input[below][x] + input[below][left] + input[below][right])) /
+          ((input[y][x] + input[y][right] + input[y][right_right]) +
+           (input[below][x] + input[below][right] + input[below][right_right]) +
+           (input[below_below][x] + input[below_below][right] +
+            input[below_below][right_right])) /
           9;
     }
   }
@@ -30,19 +33,22 @@ void blur_mat_redup(const vector<vector<float>> &input,
                     vector<vector<float>> &output) {
   int height = input.size();
   int width = input[0].size();
+  int right, right_right, below, below_below;
   for (int x = 0; x < width; ++x) {
     for (int y = 0; y < height; ++y) {
-      int left = x - 1 < 0 ? 0 : x - 1;
-      int right = x + 1 >= width ? width - 1 : x + 1;
-      output[y][x] = (input[y][x] + input[y][left] + input[y][right]) / 3;
+      right = x + 1 >= width ? width - 1 : x + 1;
+      right_right = x + 2 >= width ? width - 1 : x + 2;
+      output[y][x] =
+          (input[y][x] + input[y][right] + input[y][right_right]) / 3;
     }
   }
   // not equivalence
   for (int x = 0; x < width; ++x) {
     for (int y = 0; y < height; ++y) {
-      int above = y - 1 < 0 ? 0 : y - 1;
-      int below = y + 1 >= height ? height - 1 : y + 1;
-      output[y][x] = (output[y][x] + output[above][x] + output[below][x]) / 3;
+      below = y + 1 >= height ? height - 1 : y + 1;
+      below_below = y + 2 >= height ? height - 1 : y + 2;
+      output[y][x] =
+          (output[y][x] + output[below][x] + output[below_below][x]) / 3;
     }
   }
 }
@@ -51,19 +57,22 @@ void blur_mat_locality(const vector<vector<float>> &input,
                        vector<vector<float>> &output) {
   int height = input.size();
   int width = input[0].size();
+  int right, right_right, below, below_below;
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; ++x) {
-      int left = x - 1 < 0 ? 0 : x - 1;
-      int right = x + 1 >= width ? width - 1 : x + 1;
-      output[y][x] = (input[y][x] + input[y][left] + input[y][right]) / 3;
+      right = x + 1 >= width ? width - 1 : x + 1;
+      right_right = x + 2 >= width ? width - 1 : x + 2;
+      output[y][x] =
+          (input[y][x] + input[y][right] + input[y][right_right]) / 3;
     }
   }
 
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; ++x) {
-      int above = y - 1 < 0 ? 0 : y - 1;
-      int below = y + 1 >= height ? height - 1 : y + 1;
-      output[y][x] = (output[y][x] + output[above][x] + output[below][x]) / 3;
+      below = y + 1 >= height ? height - 1 : y + 1;
+      below_below = y + 2 >= height ? height - 1 : y + 2;
+      output[y][x] =
+          (output[y][x] + output[below][x] + output[below_below][x]) / 3;
     }
   }
 }
@@ -73,20 +82,42 @@ void blur_mat_parallel(const vector<vector<float>> &input,
   int height = input.size();
   int width = input[0].size();
 #pragma omp parallel for
-  for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < width; ++x) {
-      int left = x - 1 < 0 ? 0 : x - 1;
-      int right = x + 1 >= width ? width - 1 : x + 1;
-      output[y][x] = (input[y][x] + input[y][left] + input[y][right]) / 3;
+  for (int x = 0; x < width; ++x) {
+    int right = x + 1 >= width ? width - 1 : x + 1;
+    int right_right = x + 2 >= width ? width - 1 : x + 2;
+    for (int y = 0; y < height; ++y) {
+      int below = y + 1 >= height ? height - 1 : y + 1;
+      int below_below = y + 2 >= height ? height - 1 : y + 2;
+      output[y][x] =
+          ((input[y][x] + input[y][right] + input[y][right_right]) +
+           (input[below][x] + input[below][right] + input[below][right_right]) +
+           (input[below_below][x] + input[below_below][right] +
+            input[below_below][right_right])) /
+          9;
     }
   }
+}
 
-  // cannot parallel here!
+void blur_mat_parallel_redup(const vector<vector<float>> &input,
+                             vector<vector<float>> &output) {
+  int height = input.size();
+  int width = input[0].size();
+#pragma omp parallel for
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; ++x) {
-      int above = y - 1 < 0 ? 0 : y - 1;
+      int right = x + 1 >= width ? width - 1 : x + 1;
+      int right_right = x + 2 >= width ? width - 1 : x + 2;
+      output[y][x] =
+          (input[y][x] + input[y][right] + input[y][right_right]) / 3;
+    }
+  }
+  // can not parallel here
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width; ++x) {
       int below = y + 1 >= height ? height - 1 : y + 1;
-      output[y][x] = (output[y][x] + output[above][x] + output[below][x]) / 3;
+      int below_below = y + 2 >= height ? height - 1 : y + 2;
+      output[y][x] =
+          (output[y][x] + output[below][x] + output[below_below][x]) / 3;
     }
   }
 }
@@ -96,32 +127,33 @@ void blur_mat_tiling(const vector<vector<float>> &input,
                      int tile_height) {
   int height = input.size();
   int width = input[0].size();
+  int t_y, t_x, target_y, target_x, right, right_right, below, below_below;
   for (int tile_y = 0; tile_y < height / tile_height; ++tile_y) {
-    int t_y = tile_y * tile_height;
+    t_y = tile_y * tile_height;
     for (int tile_x = 0; tile_x < width / tile_width; ++tile_x) {
-      int t_x = tile_x * tile_width;
+      t_x = tile_x * tile_width;
       for (int y = 0; y < tile_height; ++y) {
-        int target_y = t_y + y;
+        target_y = t_y + y;
         for (int x = 0; x < tile_width; ++x) {
-          int target_x = t_x + x;
-          int left = target_x - 1 < 0 ? 0 : target_x - 1;
-          int right = target_x + 1 >= width ? width - 1 : target_x + 1;
+          target_x = t_x + x;
+          right = target_x + 1 >= width ? width - 1 : target_x + 1;
+          right_right = target_x + 2 >= width ? width - 1 : target_x + 2;
           output[target_y][target_x] =
-              (input[target_y][target_x] + input[target_y][left] +
-               input[target_y][right]) /
+              (input[target_y][target_x] + input[target_y][right] +
+               input[target_y][right_right]) /
               3;
         }
       }
 
       for (int y = 0; y < tile_height; ++y) {
-        int target_y = t_y + y;
-        int above = target_y - 1 < 0 ? 0 : target_y - 1;
-        int below = target_y + 1 >= height ? height - 1 : target_y + 1;
+        target_y = t_y + y;
+        below = target_y + 1 >= height ? height - 1 : target_y + 1;
+        below_below = target_y + 1 >= height ? height - 1 : target_y + 1;
         for (int x = 0; x < tile_width; ++x) {
-          int target_x = t_x + x;
+          target_x = t_x + x;
           output[target_y][target_x] =
-              (output[target_y][target_x] + output[above][target_x] +
-               output[below][target_x]) /
+              (output[target_y][target_x] + output[below][target_x] +
+               output[below_below][target_x]) /
               3;
         }
       }
@@ -143,24 +175,24 @@ void blur_mat_tiling_parallel(const vector<vector<float>> &input,
         int target_y = t_y + y;
         for (int x = 0; x < tile_width; ++x) {
           int target_x = t_x + x;
-          int left = target_x - 1 < 0 ? 0 : target_x - 1;
           int right = target_x + 1 >= width ? width - 1 : target_x + 1;
+          int right_right = target_x + 2 >= width ? width - 1 : target_x + 2;
           output[target_y][target_x] =
-              (input[target_y][target_x] + input[target_y][left] +
-               input[target_y][right]) /
+              (input[target_y][target_x] + input[target_y][right] +
+               input[target_y][right_right]) /
               3;
         }
       }
 
       for (int y = 0; y < tile_height; ++y) {
         int target_y = t_y + y;
-        int above = target_y - 1 < 0 ? 0 : target_y - 1;
         int below = target_y + 1 >= height ? height - 1 : target_y + 1;
+        int below_below = target_y + 2 >= height ? height - 1 : target_y + 2;
         for (int x = 0; x < tile_width; ++x) {
           int target_x = t_x + x;
           output[target_y][target_x] =
-              (output[target_y][target_x] + output[above][target_x] +
-               output[below][target_x]) /
+              (output[target_y][target_x] + output[below][target_x] +
+               output[below_below][target_x]) /
               3;
         }
       }
@@ -169,43 +201,23 @@ void blur_mat_tiling_parallel(const vector<vector<float>> &input,
 }
 
 void blur_mat_sse(const vector<vector<float>> &input,
-                  vector<vector<float>> &output, int tile_width,
-                  int tile_height) {
+                  vector<vector<float>> &output) {
   int height = input.size();
   int width = input[0].size();
-  __m128 v_data;
 #pragma omp parallel for
-  for (int tile_y = 0; tile_y < height / tile_height; ++tile_y) {
-    int t_y = tile_y * tile_height;
-    for (int tile_x = 0; tile_x < width / tile_width; ++tile_x) {
-      int t_x = tile_x * tile_width;
-      for (int y = 0; y < tile_height; ++y) {
-        int target_y = t_y + y;
-        for (int x = 0; x < tile_width; ++x) {
-          int target_x = t_x + x;
-          int left = target_x - 1 < 0 ? 0 : target_x - 1;
-          int right = target_x + 1 >= width ? width - 1 : target_x + 1;
-
-          v_data = _mm_load_ps(&input[target_y][left]);
-          // output[target_y][target_x] =
-          //     (input[target_y][target_x] + input[target_y][left] +
-          //      input[target_y][right]) /
-          //     3;
-        }
-      }
-
-      for (int y = 0; y < tile_height; ++y) {
-        int target_y = t_y + y;
-        int above = target_y - 1 < 0 ? 0 : target_y - 1;
-        int below = target_y + 1 >= height ? height - 1 : target_y + 1;
-        for (int x = 0; x < tile_width; ++x) {
-          int target_x = t_x + x;
-          output[target_y][target_x] =
-              (output[target_y][target_x] + output[target_y][above] +
-               output[target_y][below]) /
-              3;
-        }
-      }
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width; ++x) {
+      int below = y + 1 >= height ? height - 1 : y + 1;
+      int below_below = y + 2 >= height ? height - 1 : y + 2;
+      __m128 vdata_1 = _mm_loadu_ps(&input[y][x]);
+      __m128 vdata_2 = _mm_loadu_ps(&input[below][x]);
+      __m128 vdata_3 = _mm_loadu_ps(&input[below_below][x]);
+      __m128 vres = _mm_add_ps(vdata_1, vdata_2);
+      vres = _mm_add_ps(vres, vdata_3);
+      vres = _mm_hadd_ps(vres, vres);
+      vres = _mm_hadd_ps(vres, vres);
+      _mm_store_ss(&output[y][x], vres);
+      output[y][x] /= 12;
     }
   }
 }
@@ -231,54 +243,39 @@ int main() {
   t1.stop();
 
   vector<vector<float>> out_data_2(height, vector<float>(width, 0));
-  Timer t2("2 redup");
+  Timer t2("2 redup", t1.get());
   blur_mat_redup(in_data, out_data_2);
   t2.stop();
 
   vector<vector<float>> out_data_3(height, vector<float>(width, 0));
-  Timer t3("3 locality");
+  Timer t3("3 locality", t1.get());
   blur_mat_locality(in_data, out_data_3);
   t3.stop();
 
+  vector<vector<float>> out_data_4(height, vector<float>(width, 0));
+  Timer t4("4 parallel", t1.get());
+  blur_mat_parallel(in_data, out_data_4);
+  t4.stop();
+
   vector<vector<float>> out_data_5(height, vector<float>(width, 0));
-  Timer t5("5 parallel");
-  blur_mat_parallel(in_data, out_data_5);
+  Timer t5("5 parallel + redup", t1.get());
+  blur_mat_parallel_redup(in_data, out_data_5);
   t5.stop();
 
   vector<vector<float>> out_data_4_6(height, vector<float>(width, 0));
-  Timer t4_6("6 1024*512 titing");
+  Timer t4_6("6 1024*512 titing", t1.get());
   blur_mat_tiling(in_data, out_data_4_6, 1024, 512);
   t4_6.stop();
 
   vector<vector<float>> out_data_7(height, vector<float>(width, 0));
-  Timer t7("7 tiling + parallel");
+  Timer t7("7 tiling + parallel", t1.get());
   blur_mat_tiling_parallel(in_data, out_data_7, 1024, 256);
   t7.stop();
 
-  // vector<vector<float>> out_data_4_1(height, vector<float>(width, 0));
-  // Timer t4_1("4_1 2*2 titing");
-  // blur_mat_tiling(in_data, out_data_4_1, 2, 2);
-  // t4_1.stop();
-
-  // vector<vector<float>> out_data_4_2(height, vector<float>(width, 0));
-  // Timer t4_2("4_2 8*8 titing");
-  // blur_mat_tiling(in_data, out_data_4_2, 8, 8);
-  // t4_2.stop();
-
-  // vector<vector<float>> out_data_4_3(height, vector<float>(width, 0));
-  // Timer t4_3("4_3 32*32  titing");
-  // blur_mat_tiling(in_data, out_data_4_3, 32, 32);
-  // t4_3.stop();
-
-  // vector<vector<float>> out_data_4_4(height, vector<float>(width, 0));
-  // Timer t4_4("4_4 64*64 titing");
-  // blur_mat_tiling(in_data, out_data_4_4, 64, 64);
-  // t4_4.stop();
-
-  // vector<vector<float>> out_data_4_5(height, vector<float>(width, 0));
-  // Timer t4_5("4_5 256*256 titing");
-  // blur_mat_tiling(in_data, out_data_4_5, 256, 256);
-  // t4_5.stop();
+  vector<vector<float>> out_data_8(height, vector<float>(width, 0));
+  Timer t8("8 parallel + sse", t1.get());
+  blur_mat_sse(in_data, out_data_8);
+  t8.stop();
 
   return 0;
 }
