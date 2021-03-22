@@ -42,7 +42,7 @@ void blur_mat_redup(const vector<vector<float>> &input,
           (input[y][x] + input[y][right] + input[y][right_right]) / 3;
     }
   }
-  // not equivalence
+
   for (int x = 0; x < width; ++x) {
     for (int y = 0; y < height; ++y) {
       below = y + 1 >= height ? height - 1 : y + 1;
@@ -82,12 +82,12 @@ void blur_mat_parallel(const vector<vector<float>> &input,
   int height = input.size();
   int width = input[0].size();
 #pragma omp parallel for
-  for (int x = 0; x < width; ++x) {
-    int right = x + 1 >= width ? width - 1 : x + 1;
-    int right_right = x + 2 >= width ? width - 1 : x + 2;
-    for (int y = 0; y < height; ++y) {
-      int below = y + 1 >= height ? height - 1 : y + 1;
-      int below_below = y + 2 >= height ? height - 1 : y + 2;
+  for (int y = 0; y < height; ++y) {
+    int below = y + 1 >= height ? height - 1 : y + 1;
+    int below_below = y + 2 >= height ? height - 1 : y + 2;
+    for (int x = 0; x < width; ++x) {
+      int right = x + 1 >= width ? width - 1 : x + 1;
+      int right_right = x + 2 >= width ? width - 1 : x + 2;
       output[y][x] =
           ((input[y][x] + input[y][right] + input[y][right_right]) +
            (input[below][x] + input[below][right] + input[below][right_right]) +
