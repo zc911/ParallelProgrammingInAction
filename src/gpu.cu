@@ -13,10 +13,12 @@ using namespace std;
 template <typename T>
 struct Mat {
   Mat(int width, int height) : _width(width), _height(height), _data(nullptr) {}
-  Mat(int width, int height, T init_value)
+  Mat(int width, int height, bool init)
       : _width(width), _height(height), _data(nullptr) {
     _data = (T *)malloc(sizeof(T) * _width * _height);
-    for (int i = 0; i < _width * _height; i++) _data[i] = i;
+    if (init) {
+      for (int i = 0; i < _width * _height; i++) _data[i] = i;
+    }
   }
   ~Mat() {
     if (_data) free(_data);
@@ -132,13 +134,13 @@ void print_mat(Mat<float> &mat) {
 }
 
 int main() {
-  cudaSetDevice(3);
+  cudaSetDevice(2);
 
   const int width = 8192;
   const int height = 4096;
 
-  Mat<float> *input = new Mat<float>(width, height, 0.0f);
-  Mat<float> *output = new Mat<float>(width, height, 0.0f);
+  Mat<float> *input = new Mat<float>(width, height, true);
+  Mat<float> *output = new Mat<float>(width, height, true);
 
   Mat<float> *d_input;
   Mat<float> *d_output;
