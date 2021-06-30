@@ -132,28 +132,27 @@ void blur_mat_tiling(const vector<vector<float>> &input,
     t_y = tile_y * tile_height;
     for (int tile_x = 0; tile_x < width / tile_width; ++tile_x) {
       t_x = tile_x * tile_width;
+      vector<vector<float>> tile_tmp(tile_height, vector<float>(tile_width, 0));
       for (int y = 0; y < tile_height; ++y) {
         target_y = t_y + y;
         for (int x = 0; x < tile_width; ++x) {
           target_x = t_x + x;
           right = target_x + 1 >= width ? width - 1 : target_x + 1;
           right_right = target_x + 2 >= width ? width - 1 : target_x + 2;
-          output[target_y][target_x] =
-              (input[target_y][target_x] + input[target_y][right] +
-               input[target_y][right_right]) /
-              3;
+          tile_tmp[y][x] = (input[target_y][target_x] + input[target_y][right] +
+                            input[target_y][right_right]) /
+                           3;
         }
       }
 
       for (int y = 0; y < tile_height; ++y) {
-        target_y = t_y + y;
-        below = target_y + 1 >= height ? height - 1 : target_y + 1;
-        below_below = target_y + 1 >= height ? height - 1 : target_y + 1;
+        int target_y = t_y + y;
+        int below = y + 1 >= tile_height ? tile_height - 1 : y + 1;
+        int below_below = y + 2 >= tile_height ? tile_height - 1 : y + 2;
         for (int x = 0; x < tile_width; ++x) {
-          target_x = t_x + x;
+          int target_x = t_x + x;
           output[target_y][target_x] =
-              (output[target_y][target_x] + output[below][target_x] +
-               output[below_below][target_x]) /
+              (tile_tmp[y][x] + tile_tmp[below][x] + tile_tmp[below_below][x]) /
               3;
         }
       }
@@ -171,28 +170,27 @@ void blur_mat_tiling_parallel(const vector<vector<float>> &input,
     int t_y = tile_y * tile_height;
     for (int tile_x = 0; tile_x < width / tile_width; ++tile_x) {
       int t_x = tile_x * tile_width;
+      vector<vector<float>> tile_tmp(tile_height, vector<float>(tile_width, 0));
       for (int y = 0; y < tile_height; ++y) {
         int target_y = t_y + y;
         for (int x = 0; x < tile_width; ++x) {
           int target_x = t_x + x;
           int right = target_x + 1 >= width ? width - 1 : target_x + 1;
           int right_right = target_x + 2 >= width ? width - 1 : target_x + 2;
-          output[target_y][target_x] =
-              (input[target_y][target_x] + input[target_y][right] +
-               input[target_y][right_right]) /
-              3;
+          tile_tmp[y][x] = (input[target_y][target_x] + input[target_y][right] +
+                            input[target_y][right_right]) /
+                           3;
         }
       }
 
       for (int y = 0; y < tile_height; ++y) {
         int target_y = t_y + y;
-        int below = target_y + 1 >= height ? height - 1 : target_y + 1;
-        int below_below = target_y + 2 >= height ? height - 1 : target_y + 2;
+        int below = y + 1 >= tile_height ? tile_height - 1 : y + 1;
+        int below_below = y + 2 >= tile_height ? tile_height - 1 : y + 2;
         for (int x = 0; x < tile_width; ++x) {
           int target_x = t_x + x;
           output[target_y][target_x] =
-              (output[target_y][target_x] + output[below][target_x] +
-               output[below_below][target_x]) /
+              (tile_tmp[y][x] + tile_tmp[below][x] + tile_tmp[below_below][x]) /
               3;
         }
       }
@@ -231,6 +229,30 @@ void print_mat(const vector<vector<float>> &mat) {
   }
 }
 
+bool check_result(const vector<vector<float>> &m1,
+                  const vector<vector<float>> &m2) {
+  if (m1.size() != m2.size()) {
+    cout << "matrix height not equals " << m1.size() << "!=" << m2.size()
+         << endl;
+    return false;
+  }
+  if (m1[0].size() != m2[0].size()) {
+    cout << "matrix width not equal " << m1[0].size() << "!=" << m2[0].size();
+    return false;
+  }
+
+  for (int y = 0; y < m1.size(); ++y) {
+    for (int x = 0; x < m1[0].size(); ++x) {
+      if (m1[y][x] != m2[y][x]) {
+        cout << "element at (" << y << "," << x << ") not equal " << m1[y][x]
+             << "!=" << m2[y][x] << endl;
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 int main() {
   const int width = 8192;
   const int height = 4096;
@@ -242,40 +264,54 @@ int main() {
   blur_mat_original(in_data, out_data_1);
   t1.stop();
 
-  vector<vector<float>> out_data_2(height, vector<float>(width, 0));
-  Timer t2("2 redup", t1.get());
-  blur_mat_redup(in_data, out_data_2);
-  t2.stop();
+  // vector<vector<float>> out_data_2(height, vector<float>(width, 0));
+  // Timer t2("2 redup", t1.get());
+  // blur_mat_redup(in_data, out_data_2);
+  // t2.stop();
 
-  vector<vector<float>> out_data_3(height, vector<float>(width, 0));
-  Timer t3("3 locality", t1.get());
-  blur_mat_locality(in_data, out_data_3);
-  t3.stop();
+  // check_result(out_data_1, out_data_2);
 
-  vector<vector<float>> out_data_4(height, vector<float>(width, 0));
-  Timer t4("4 parallel", t1.get());
-  blur_mat_parallel(in_data, out_data_4);
-  t4.stop();
+  // vector<vector<float>> out_data_3(height, vector<float>(width, 0));
+  // Timer t3("3 locality", t1.get());
+  // blur_mat_locality(in_data, out_data_3);
+  // t3.stop();
 
-  vector<vector<float>> out_data_5(height, vector<float>(width, 0));
-  Timer t5("5 parallel + redup", t1.get());
-  blur_mat_parallel_redup(in_data, out_data_5);
-  t5.stop();
+  // check_result(out_data_1, out_data_3);
+
+  // vector<vector<float>> out_data_4(height, vector<float>(width, 0));
+  // Timer t4("4 parallel", t1.get());
+  // blur_mat_parallel(in_data, out_data_4);
+  // t4.stop();
+
+  // check_result(out_data_1, out_data_4);
+
+  // vector<vector<float>> out_data_5(height, vector<float>(width, 0));
+  // Timer t5("5 parallel + redup", t1.get());
+  // blur_mat_parallel_redup(in_data, out_data_5);
+  // t5.stop();
+
+  // check_result(out_data_1, out_data_5);
 
   vector<vector<float>> out_data_4_6(height, vector<float>(width, 0));
   Timer t4_6("6 1024*512 titing", t1.get());
   blur_mat_tiling(in_data, out_data_4_6, 1024, 512);
   t4_6.stop();
 
+  check_result(out_data_1, out_data_4_6);
+
   vector<vector<float>> out_data_7(height, vector<float>(width, 0));
   Timer t7("7 tiling + parallel", t1.get());
   blur_mat_tiling_parallel(in_data, out_data_7, 1024, 256);
   t7.stop();
 
-  vector<vector<float>> out_data_8(height, vector<float>(width, 0));
-  Timer t8("8 parallel + sse", t1.get());
-  blur_mat_sse(in_data, out_data_8);
-  t8.stop();
+  check_result(out_data_1, out_data_7);
+
+  // vector<vector<float>> out_data_8(height, vector<float>(width, 0));
+  // Timer t8("8 parallel + sse", t1.get());
+  // blur_mat_sse(in_data, out_data_8);
+  // t8.stop();
+
+  // check_result(out_data_1, out_data_8);
 
   return 0;
 }

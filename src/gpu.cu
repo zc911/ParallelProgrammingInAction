@@ -35,6 +35,8 @@ struct Mat {
 __global__ void blur_mat(Mat<float> *input, Mat<float> *output) {
   int width = input->_width;
   int height = input->_height;
+  // int width = 8192;
+  // int height = 4096;
 
   int y = blockIdx.y * blockDim.y + threadIdx.y;
   int x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -134,7 +136,7 @@ void print_mat(Mat<float> &mat) {
 }
 
 int main() {
-  cudaSetDevice(2);
+  cudaSetDevice(3);
 
   const int width = 8192;
   const int height = 4096;
@@ -144,6 +146,7 @@ int main() {
 
   Mat<float> *d_input;
   Mat<float> *d_output;
+
   Mat<float> *d_input_data = new Mat<float>(width, height);
   Mat<float> *d_output_data = new Mat<float>(width, height);
 
@@ -151,12 +154,12 @@ int main() {
   cudaMalloc((void **)&d_output, sizeof(Mat<float>));
   cudaMalloc((void **)&(d_input_data->_data), sizeof(float) * width * height);
   cudaMalloc((void **)&(d_output_data->_data), sizeof(float) * width * height);
+
+  Timer t_copy("Host to device");
   cudaMemcpy(d_input, d_input_data, sizeof(Mat<float>), cudaMemcpyHostToDevice);
   cudaMemcpy(d_output, d_output_data, sizeof(Mat<float>),
              cudaMemcpyHostToDevice);
-
-  Timer t_copy("Host to device");
-  cudaMemcpy(d_input_data->_data, input->_data, sizeof(float) * width * height,
+  cudaMemcpy(d_input_data, input->_data, sizeof(float) * width * height,
              cudaMemcpyHostToDevice);
   t_copy.stop();
 
@@ -167,6 +170,7 @@ int main() {
   blur_mat<<<dim_grid, dim_block>>>(d_input, d_output);
   cudaDeviceSynchronize();
   t1.stop();
+
   cudaMemcpy(output->_data, d_output_data->_data,
              sizeof(float) * width * height, cudaMemcpyDeviceToHost);
 
@@ -184,12 +188,12 @@ int main() {
   cudaMemcpy(output->_data, d_output_data->_data,
              sizeof(float) * width * height, cudaMemcpyDeviceToHost);
 
-  // for (int i = 0; i < 4; ++i) {
-  //   for (int j = 0; j < 4; ++j) {
-  //     printf("%0.2f, ", output->get(j, i));
-  //   }
-  //   printf("\n");
-  // }
+  // // for (int i = 0; i < 4; ++i) {
+  // //   for (int j = 0; j < 4; ++j) {
+  // //     printf("%0.2f, ", output->get(j, i));
+  // //   }
+  // //   printf("\n");
+  // // }
 
   cudaFree(d_input);
   cudaFree(d_output);
